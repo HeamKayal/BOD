@@ -1,0 +1,589 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Google Search Console Verification Meta Tag -->
+    <meta name="google-site-verification" content="your-verification-code" />
+    <!-- Google AdSense Auto Ads Script -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1234567890123456" crossorigin="anonymous"></script>
+    <title>BOD Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        h1, h2 {
+            color: #2c3e50;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            padding: 8px;
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+            font-size: 18px;
+        }
+        .note {
+            font-style: italic;
+            color: #666;
+            font-size: 14px;
+        }
+        .datetime {
+            font-style: italic;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #eee;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            margin-right: 5px;
+            border-radius: 5px 5px 0 0;
+        }
+        .tab.active {
+            background-color: #fff;
+            border-bottom: 1px solid #fff;
+        }
+        .tab-content {
+            display: none;
+            padding: 20px;
+            border: 1px solid #ddd;
+            background-color: #fff;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Biological Oxygen Demand (BOD) Calculator</h1>
+        <p>This calculator follows the standards from IS 3025 (Part 38) : 1989 for 3-day BOD at 27°C ± 1°C</p>
+        <div class="datetime">
+            Current Date and Time: 04:06 PM IST on Wednesday, May 21, 2025
+        </div>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="openTab(event, 'undiluted')">Undiluted Sample</div>
+            <div class="tab" onclick="openTab(event, 'diluted')">Diluted Sample</div>
+            <div class="tab" onclick="openTab(event, 'seeded')">Seeded Sample</div>
+            <div class="tab" onclick="openTab(event, 'check')">Glucose-Glutamic Check</div>
+            <div class="tab" onclick="openTab(event, 'knowledge')">Knowledge Info</div>
+        </div>
+        
+        <!-- Undiluted Sample Tab -->
+        <div id="undiluted" class="tab-content active">
+            <h2>Undiluted Sample Calculation</h2>
+            <p>Use this when BOD is expected to be less than 5 mg/l (no dilution needed)</p>
+            
+            <div class="form-group">
+                <label for="initialDO">Initial Dissolved Oxygen (DO) before incubation (mg/l):</label>
+                <input type="number" step="0.1" id="initialDO" placeholder="Enter initial DO">
+            </div>
+            
+            <div class="form-group">
+                <label for="finalDO">Final Dissolved Oxygen (DO) after 3 days incubation (mg/l):</label>
+                <input type="number" step="0.1" id="finalDO" placeholder="Enter final DO">
+            </div>
+            
+            <button onclick="calculateUndilutedBOD()">Calculate BOD</button>
+            
+            <div class="result" id="undilutedResult"></div>
+            
+            <div class="note">
+                <strong>Calculation:</strong> BOD (mg/l) = Initial DO - Final DO
+            </div>
+        </div>
+        
+        <!-- Diluted Sample Tab -->
+        <div id="diluted" class="tab-content">
+            <h2>Diluted Sample Calculation</h2>
+            <p>Use this when sample is diluted but not seeded</p>
+            
+            <div class="form-group">
+                <label for="dilutedInitialDO">Initial DO of diluted sample (mg/l):</label>
+                <input type="number" step="0.1" id="dilutedInitialDO" placeholder="Enter initial DO">
+            </div>
+            
+            <div class="form-group">
+                <label for="dilutedFinalDO">Final DO of diluted sample after incubation (mg/l):</label>
+                <input type="number" step="0.1" id="dilutedFinalDO" placeholder="Enter final DO">
+            </div>
+            
+            <div class="form-group">
+                <label for="dilutionFactor">Volume of sample (P, in ml, diluted to 1 litre):</label>
+                <input type="number" step="0.1" id="dilutionFactor" placeholder="Enter sample volume in ml">
+            </div>
+            
+            <button onclick="calculateDilutedBOD()">Calculate BOD</button>
+            
+            <div class="result" id="dilutedResult"></div>
+            
+            <div class="note">
+                <strong>Calculation:</strong> BOD (mg/l) = (D₁ - D₂) × (1000 / P)<br>
+                Where:<br>
+                D₁ = Initial DO of sample<br>
+                D₂ = Final DO of sample<br>
+                P = Volume of sample (in ml, diluted to 1 litre)<br>
+                1000 / P = Dilution factor (since total volume is 1 litre)
+            </div>
+        </div>
+        
+        <!-- Seeded Sample Tab -->
+        <div id="seeded" class="tab-content">
+            <h2>Seeded Sample Calculation</h2>
+            <p>Use this when dilution water is seeded</p>
+            
+            <div class="form-group">
+                <label for="seededInitialDO">Initial DO of sample (D₁, mg/l):</label>
+                <input type="number" step="0.1" id="seededInitialDO" placeholder="Enter initial DO">
+            </div>
+            
+            <div class="form-group">
+                <label for="seededFinalDO">Final DO of sample after incubation (D₂, mg/l):</label>
+                <input type="number" step="0.1" id="seededFinalDO" placeholder="Enter final DO">
+            </div>
+            
+            <div class="form-group">
+                <label for="controlInitialDO">Initial DO of seed control (B₁, mg/l):</label>
+                <input type="number" step="0.1" id="controlInitialDO" placeholder="Enter initial DO">
+            </div>
+            
+            <div class="form-group">
+                <label for="controlFinalDO">Final DO of seed control after incubation (B₂, mg/l):</label>
+                <input type="number" step="0.1" id="controlFinalDO" placeholder="Enter final DO">
+            </div>
+            
+            <div class="form-group">
+                <label for="seedRatio">Ratio of seed (f):</label>
+                <input type="number" step="0.01" id="seedRatio" placeholder="Enter ratio of seed in diluted sample to seed in control">
+            </div>
+            
+            <div class="form-group">
+                <label for="seededDilutionFactor">Volume of sample (P, in ml, diluted to 1 litre):</label>
+                <input type="number" step="0.1" id="seededDilutionFactor" placeholder="Enter sample volume in ml">
+            </div>
+            
+            <button onclick="calculateSeededBOD()">Calculate BOD</button>
+            
+            <div class="result" id="seededResult"></div>
+            
+            <div class="note">
+                <strong>Calculation:</strong> BOD (mg/l) = [D₁ - D₂ - (B₁ - B₂)f] × (1000 / P)<br>
+                Where:<br>
+                D₁ = Initial DO of sample<br>
+                D₂ = Final DO of sample<br>
+                B₁ = Initial DO of seed control<br>
+                B₂ = Final DO of seed control<br>
+                f = Ratio of seed in diluted sample to seed in control<br>
+                P = Volume of sample (in ml, diluted to 1 litre)<br>
+                1000 / P = Dilution factor (since total volume is 1 litre)
+            </div>
+        </div>
+        
+        <!-- Glucose-Glutamic Check Tab -->
+        <div id="check" class="tab-content">
+            <h2>Glucose-Glutamic Acid Check</h2>
+            <p>Standard check solution (150 mg glucose and 150 mg glutamic acid per litre, typically 20 ml diluted to 1 litre)</p>
+            
+            <div class="form-group">
+                <label for="checkInitialDO">Initial DO of check solution (D₁, mg/l):</label>
+                <input type="number" step="0.1" id="checkInitialDO" placeholder="Enter initial DO">
+            </div>
+            
+            <div class="form-group">
+                <label for="checkFinalDO">Final DO of check solution after incubation (D₂, mg/l):</label>
+                <input type="number" step="0.1" id="checkFinalDO" placeholder="Enter final DO">
+            </div>
+            
+            <div class="form-group">
+                <label for="checkControlInitialDO">Initial DO of seed control (B₁, mg/l):</label>
+                <input type="number" step="0.1" id="checkControlInitialDO" placeholder="Enter initial DO">
+            </div>
+            
+            <div class="form-group">
+                <label for="checkControlFinalDO">Final DO of seed control after incubation (B₂, mg/l):</label>
+                <input type="number" step="0.1" id="checkControlFinalDO" placeholder="Enter final DO">
+            </div>
+            
+            <div class="form-group">
+                <label for="checkSeedRatio">Ratio of seed (f):</label>
+                <input type="number" step="0.01" id="checkSeedRatio" placeholder="Enter ratio of seed in check solution to seed in control" value="1">
+            </div>
+            
+            <div class="form-group">
+                <label for="checkDilutionFactor">Volume of sample (P, in ml, typically 20 ml diluted to 1 litre):</label>
+                <input type="number" step="0.1" id="checkDilutionFactor" placeholder="Enter sample volume in ml" value="20">
+            </div>
+            
+            <button onclick="calculateCheckBOD()">Calculate Check BOD</button>
+            
+            <div class="result" id="checkResult"></div>
+            
+            <div class="note">
+                <strong>Calculation:</strong> BOD (mg/l) = [D₁ - D₂ - (B₁ - B₂)f] × (1000 / P)<br>
+                Where:<br>
+                D₁ = Initial DO of check solution<br>
+                D₂ = Final DO of check solution<br>
+                B₁ = Initial DO of seed control<br>
+                B₂ = Final DO of seed control<br>
+                f = Ratio of seed in check solution to seed in control<br>
+                P = Volume of sample (in ml, diluted to 1 litre)<br>
+                1000 / P = Dilution factor (since total volume is 1 litre)<br>
+                <strong>Expected range:</strong> 200 ± 37 mg/l (157–237 mg/l)<br>
+                If the BOD value is outside this range, reject any BOD determinations made with the seed and dilution water and investigate the problem.
+            </div>
+        </div>
+        
+        <!-- Knowledge Information Tab -->
+        <div id="knowledge" class="tab-content">
+            <h2>Knowledge Information: BOD Analysis</h2>
+            <table>
+                <tr>
+                    <th>Topic</th>
+                    <th>Details</th>
+                </tr>
+                <tr>
+                    <td><strong>Interferences in BOD Analysis</strong></td>
+                    <td>
+                        BOD analysis measures the oxygen consumed by microorganisms while decomposing organic matter in water. Several factors can interfere with accurate results:<br><br>
+                        - <strong>Toxic Substances</strong>: The presence of toxic substances such as heavy metals (e.g., lead, mercury), pesticides, or industrial chemicals (e.g., sanitizers, antibiotics) can suppress microbial activity, leading to lower BOD values. For example, chlorination disinfection in sewage treatment or odor-control chemicals in sanitary waste can inhibit bacteria.<br><br>
+                        - <strong>Nitrification</strong>: The oxidation of ammonia to nitrate by nitrifying bacteria consumes oxygen, which can inflate BOD values if not controlled. To avoid this, nitrification inhibitors like allylthiourea (ATU) are often added during testing.<br><br>
+                        - <strong>Mineral Oxidation</strong>: Oxidation of inorganic materials like sulfides or ferrous iron can consume dissolved oxygen, interfering with the measurement of oxygen used for organic decomposition.<br><br>
+                        - <strong>Oxygenation</strong>: Exposure to atmospheric oxygen during sample handling or testing can artificially increase dissolved oxygen levels, skewing results. BOD bottles must be airtight to prevent this.<br><br>
+                        - <strong>Incomplete Metabolism</strong>: Complex organic compounds may not fully degrade within the standard 5-day incubation period, leading to an underestimation of BOD.<br><br>
+                        - <strong>Contamination</strong>: External organic matter or microorganisms introduced during sample collection or handling can elevate BOD values.<br><br>
+                        - <strong>Microbial Variability</strong>: The metabolic activity of microorganisms varies depending on their health, population, and adaptation to the sample. High microbial activity can overestimate BOD, while low activity can underestimate it.<br><br>
+                        - <strong>pH and Temperature</strong>: Extreme pH or deviations from the standard 20°C incubation temperature can affect microbial activity, altering BOD results. The BOD Calculator adjusts pH to 7.0 ± 0.2 to mitigate this.
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Uses of BOD Analysis</strong></td>
+                    <td>
+                        BOD analysis is a critical tool in environmental science and wastewater management, with the following applications:<br><br>
+                        - <strong>Water Quality Assessment</strong>: BOD indicates the level of organic pollution in water bodies. High BOD values suggest significant biodegradable organic matter, which can deplete oxygen and harm aquatic life.<br><br>
+                        - <strong>Wastewater Treatment Monitoring</strong>: BOD is used to evaluate the efficiency of wastewater treatment plants. It measures waste loads, the effectiveness of BOD removal, and the quality of effluent discharged into water bodies. The BOD Calculator supports this by providing calculations for undiluted, diluted, and seeded samples.<br><br>
+                        - <strong>Designing Treatment Systems</strong>: BOD data helps design wastewater treatment plants by estimating the organic load and required treatment capacity. The ratio of BOD to COD (Chemical Oxygen Demand) indicates the biodegradable fraction of effluent, aiding in plant sizing.<br><br>
+                        - <strong>Regulatory Compliance</strong>: BOD is used to ensure compliance with environmental regulations by monitoring effluent discharge. It helps assess the short-term impact of wastewater on receiving waters.<br><br>
+                        - <strong>Self-Purification Studies</strong>: BOD measures the self-purification capacity of streams, determining how much dilution water is needed to safely dispose of sewage.<br><br>
+                        - <strong>Glucose-Glutamic Acid Check</strong>: As implemented in the BOD Calculator, this check validates the reliability of BOD tests by ensuring results fall within the expected range (157–237 mg/L for a standard solution), confirming the quality of seed and dilution water.<br><br>
+                        - <strong>Industrial Applications</strong>: BOD is used in industries like pharmaceuticals and medical research to measure oxygen consumption by cell cultures, and in food processing to assess waste loads.
+                    </td>
+                </tr>
+            </table>
+            
+            <h2>Standard Limits for BOD</h2>
+            <table>
+                <tr>
+                    <th>Sample Name</th>
+                    <th>BOD Limit (mg/L)</th>
+                </tr>
+                <tr>
+                    <td>Drinking Water</td>
+                    <td><1 mg/L</td>
+                </tr>
+                <tr>
+                    <td>Treated Sewage (Direct Discharge to Environment, e.g., U.S. NPDES, India CPCB)</td>
+                    <td>30 mg/L</td>
+                </tr>
+                <tr>
+                    <td>Untreated or Partially Treated Sewage (Discharge to Municipal Sewer)</td>
+                    <td>250–350 mg/L</td>
+                </tr>
+                <tr>
+                    <td>Receiving Waters (e.g., Rivers)</td>
+                    <td><5 mg/L (CPCB: <3 mg/L for drinking after treatment, <6 mg/L for bathing)</td>
+                </tr>
+                <tr>
+                    <td>Industrial Wastewater (e.g., Dairy)</td>
+                    <td><8 mg/L (post-treatment)</td>
+                </tr>
+            </table>
+            <div class="note">
+                <strong>Note:</strong> Limits vary by country, region, and purpose. They may be adjusted based on the COD/BOD ratio (indicating biodegradability) and local environmental conditions. Always refer to local regulations for precise standards.
+            </div>
+        </div>
+        
+        <h2>Expression of Results</h2>
+        <p>BOD is expressed as mg/l, 3 days at 27°C and rounded off as follows:</p>
+        <ul>
+            <li>0 to 10 mg/l: round to first decimal place</li>
+            <li>Above 10 mg/l: round to whole number</li>
+        </ul>
+    </div>
+
+    <script>
+        // Tab functionality
+        function openTab(evt, tabName) {
+            const tabContents = document.getElementsByClassName("tab-content");
+            for (let i = 0; i < tabContents.length; i++) {
+                tabContents[i].classList.remove("active");
+            }
+            
+            const tabs = document.getElementsByClassName("tab");
+            for (let i = 0; i < tabs.length; i++) {
+                tabs[i].classList.remove("active");
+            }
+            
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+        
+        // Round BOD according to standards
+        function roundBOD(value) {
+            if (isNaN(value)) return NaN;
+            if (value <= 10) {
+                return Math.round(value * 10) / 10; // 1 decimal place
+            } else {
+                return Math.round(value); // whole number
+            }
+        }
+        
+        // Undiluted sample calculation
+        function calculateUndilutedBOD() {
+            const initialDO = parseFloat(document.getElementById("initialDO").value);
+            const finalDO = parseFloat(document.getElementById("finalDO").value);
+            
+            if (isNaN(initialDO) || isNaN(finalDO)) {
+                alert("Please enter valid numbers for both DO values");
+                return;
+            }
+            
+            if (initialDO < finalDO) {
+                alert("Initial DO must be greater than or equal to Final DO");
+                return;
+            }
+            
+            const BOD = initialDO - finalDO;
+            const roundedBOD = roundBOD(BOD);
+            
+            document.getElementById("undilutedResult").innerHTML = `
+                <strong>BOD Result:</strong> ${roundedBOD} mg/l<br>
+                <strong>Calculation:</strong> ${initialDO} - ${finalDO} = ${BOD.toFixed(2)} mg/l (rounded to ${roundedBOD} mg/l)
+            `;
+        }
+        
+        // Diluted sample calculation
+        function calculateDilutedBOD() {
+            const initialDO = parseFloat(document.getElementById("dilutedInitialDO").value);
+            const finalDO = parseFloat(document.getElementById("dilutedFinalDO").value);
+            const sampleVolume = parseFloat(document.getElementById("dilutionFactor").value);
+            
+            if (isNaN(initialDO) || isNaN(finalDO) || isNaN(sampleVolume)) {
+                alert("Please enter valid numbers for all fields");
+                return;
+            }
+            
+            if (sampleVolume <= 0) {
+                alert("Sample volume must be greater than 0");
+                return;
+            }
+            
+            if (sampleVolume > 1000) {
+                alert("Sample volume must be less than or equal to 1000 ml (since diluted to 1 litre)");
+                return;
+            }
+            
+            if (initialDO < finalDO) {
+                alert("Initial DO must be greater than or equal to Final DO");
+                return;
+            }
+            
+            const BOD = (initialDO - finalDO) * (1000 / sampleVolume);
+            const roundedBOD = roundBOD(BOD);
+            
+            document.getElementById("dilutedResult").innerHTML = `
+                <strong>BOD Result:</strong> ${roundedBOD} mg/l<br>
+                <strong>Calculation:</strong> (${initialDO} - ${finalDO}) × (1000 / ${sampleVolume}) = ${BOD.toFixed(2)} mg/l (rounded to ${roundedBOD} mg/l)
+            `;
+        }
+        
+        // Seeded sample calculation
+        function calculateSeededBOD() {
+            const initialDO = parseFloat(document.getElementById("seededInitialDO").value);
+            const finalDO = parseFloat(document.getElementById("seededFinalDO").value);
+            const controlInitialDO = parseFloat(document.getElementById("controlInitialDO").value);
+            const controlFinalDO = parseFloat(document.getElementById("controlFinalDO").value);
+            const seedRatio = parseFloat(document.getElementById("seedRatio").value);
+            const sampleVolume = parseFloat(document.getElementById("seededDilutionFactor").value);
+            
+            if (isNaN(initialDO) || isNaN(finalDO) || isNaN(controlInitialDO) || 
+                isNaN(controlFinalDO) || isNaN(seedRatio) || isNaN(sampleVolume)) {
+                alert("Please enter valid numbers for all fields");
+                return;
+            }
+            
+            if (sampleVolume <= 0) {
+                alert("Sample volume must be greater than 0");
+                return;
+            }
+            
+            if (sampleVolume > 1000) {
+                alert("Sample volume must be less than or equal to 1000 ml (since diluted to 1 litre)");
+                return;
+            }
+            
+            if (initialDO < finalDO) {
+                alert("Initial DO must be greater than or equal to Final DO");
+                return;
+            }
+            
+            if (controlInitialDO < controlFinalDO) {
+                alert("Initial DO of seed control must be greater than or equal to Final DO");
+                return;
+            }
+            
+            const BOD = ((initialDO - finalDO) - (controlInitialDO - controlFinalDO) * seedRatio) * (1000 / sampleVolume);
+            const roundedBOD = roundBOD(BOD);
+            
+            document.getElementById("seededResult").innerHTML = `
+                <strong>BOD Result:</strong> ${roundedBOD} mg/l<br>
+                <strong>Calculation:</strong> [${initialDO} - ${finalDO} - (${controlInitialDO} - ${controlFinalDO}) × ${seedRatio}] × (1000 / ${sampleVolume}) = ${BOD.toFixed(2)} mg/l (rounded to ${roundedBOD} mg/l)
+            `;
+        }
+        
+        // Glucose-glutamic check calculation
+        function calculateCheckBOD() {
+            const initialDO = parseFloat(document.getElementById("checkInitialDO").value);
+            const finalDO = parseFloat(document.getElementById("checkFinalDO").value);
+            const controlInitialDO = parseFloat(document.getElementById("checkControlInitialDO").value);
+            const controlFinalDO = parseFloat(document.getElementById("checkControlFinalDO").value);
+            const seedRatio = parseFloat(document.getElementById("checkSeedRatio").value);
+            const sampleVolume = parseFloat(document.getElementById("checkDilutionFactor").value);
+            
+            if (isNaN(initialDO) || isNaN(finalDO) || isNaN(controlInitialDO) || 
+                isNaN(controlFinalDO) || isNaN(seedRatio) || isNaN(sampleVolume)) {
+                alert("Please enter valid numbers for all fields");
+                return;
+            }
+            
+            if (sampleVolume <= 0) {
+                alert("Sample volume must be greater than 0");
+                return;
+            }
+            
+            if (sampleVolume > 1000) {
+                alert("Sample volume must be less than or equal to 1000 ml (since diluted to 1 litre)");
+                return;
+            }
+            
+            if (initialDO < finalDO) {
+                alert("Initial DO must be greater than or equal to Final DO");
+                return;
+            }
+            
+            if (controlInitialDO < controlFinalDO) {
+                alert("Initial DO of seed control must be greater than or equal to Final DO");
+                return;
+            }
+            
+            const BOD = ((initialDO - finalDO) - (controlInitialDO - controlFinalDO) * seedRatio) * (1000 / sampleVolume);
+            const roundedBOD = roundBOD(BOD);
+            const isValid = BOD >= 157 && BOD <= 237;
+            
+            document.getElementById("checkResult").innerHTML = `
+                <strong>Check BOD Result:</strong> ${roundedBOD} mg/l<br>
+                <strong>Calculation:</strong> [${initialDO} - ${finalDO} - (${controlInitialDO} - ${controlFinalDO}) × ${seedRatio}] × (1000 / ${sampleVolume}) = ${BOD.toFixed(2)} mg/l (rounded to ${roundedBOD} mg/l)<br>
+                <strong>Validation:</strong> ${isValid ? '<span style="color:green">PASSED (within 200 ± 37 mg/l range)</span>' : '<span style="color:red">FAILED (outside 200 ± 37 mg/l range)</span>'}
+            `;
+        }
+    </script>
+</body>
+</html>
